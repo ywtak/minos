@@ -1,11 +1,11 @@
-# minios build. Run inside WSL2 Ubuntu (see FLASHING.md).
+# minios build. Run inside WSL2 Ubuntu (see INSTALL.md).
 #
 #   make toolchain      zig (userspace) + Ubuntu 14.04 chroot with gcc 4.7 (optional kernel)
 #   make host test      PC build of the UI + unit test
 #   make minios         static ARM binary
 #   make release BACKUP=path/kindle-full.img
 #                       dist/minios-release.zip; the backup provides Amazon's kernel
-#                       modules and the restore images (FLASHING.md)
+#                       modules and the restore images (INSTALL.md)
 #   make kernel         optional: our own build of Amazon's kernel (not installed)
 
 ZIG_VER    = 0.13.0
@@ -14,7 +14,7 @@ ZIG_URL    = https://ziglang.org/download/$(ZIG_VER)/zig-linux-x86_64-$(ZIG_VER)
 MUPDF_URL  = https://mupdf.com/downloads/archive/mupdf-$(MUPDF_VER)-source.tar.gz
 BUSYBOX_URL = https://busybox.net/downloads/binaries/1.31.0-defconfig-multiarch-musl/busybox-armv7l
 
-# full eMMC image taken from the stock Kindle (FLASHING.md step 3)
+# full eMMC image taken from the stock Kindle (INSTALL.md step 4)
 BACKUP ?= backup/kindle-full.img
 BACKUP_DIR = $(dir $(BACKUP))
 # Amazon "Kindle Source Code Notice" tarball for Kindle 5th gen, firmware 4.1.4
@@ -132,7 +132,7 @@ build/rootfs.img: build/minios build/stock-modules third_party/busybox scripts/m
 release: build/rootfs.img third_party/busybox
 	rm -rf dist/minios && mkdir -p dist/minios
 	cp build/rootfs.img build/minios third_party/busybox dist/minios/
-	cp scripts/flash.sh scripts/layout.env FLASHING.md NOTES.md dist/minios/
+	cp scripts/flash.sh scripts/discover.sh scripts/layout.env INSTALL.md NOTES.md dist/minios/
 	cd dist/minios && sha256sum rootfs.img minios busybox > SHA256SUMS
 	cd dist && rm -f minios-release.zip && zip -r minios-release.zip minios
 

@@ -63,7 +63,7 @@ Confirm with `./minios keys` over SSH on stock firmware (or create `.minios/keys
 | Fact | Value | Status |
 |---|---|---|
 | No serial console (user won't solder) | so recovery must be USB-only | user decision |
-| i.MX USB serial-downloader mode, used by `imx_usb_loader` and MobileRead's "Kubrick" | a no-solder way to enter it on this unit is **unconfirmed**; one 2014 MobileRead report says holding power then DOWN did not work on a K4NT | TBD: FLASHING.md step F |
+| i.MX USB serial-downloader mode, used by `imx_usb_loader` and MobileRead's "Kubrick" | a no-solder way to enter it on this unit is **unconfirmed**; one 2014 MobileRead report says holding power then DOWN did not work on a K4NT | TBD: see INSTALL.md, troubleshooting |
 | Stage 2 (u-boot) is allowed only after step F succeeds | enforced by `RECOVERY_VERIFIED` in flash.sh | design |
 
 ## Source

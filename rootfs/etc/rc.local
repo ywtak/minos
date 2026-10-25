@@ -12,7 +12,7 @@ done
 #    to its empty kernel slot.
 rm -f /mnt/us/ENABLE_DIAGS
 
-# 3. Install/restore requests dropped on the USB drive (FLASHING.md).
+# 3. Install/restore requests dropped on the USB drive (INSTALL.md step 9).
 #    The trigger is removed first so a failure can never loop.
 F=/mnt/us/minios-flash
 MODE=

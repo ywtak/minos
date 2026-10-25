@@ -1,6 +1,6 @@
 #!/bin/sh
 # minios flasher. Runs ON THE KINDLE, from the release folder copied to the
-# USB drive (/mnt/us/minios-flash). See FLASHING.md before using it.
+# USB drive (/mnt/us/minios-flash). See INSTALL.md before using it.
 #
 #   sh flash.sh install   minios system on p1, diags system wiped
 #                         (stock over SSH, or minios via DO_INSTALL = update)
@@ -82,7 +82,7 @@ install)
 	;;
 restore)
 	cd backup 2>/dev/null && sha256sum -c SHA256SUMS ||
-		die "backup/ needs p1.img, p2.img, diags-kernel.img and their SHA256SUMS (FLASHING.md)"
+		die "backup/ needs p1.img, p2.img, diags-kernel.img and their SHA256SUMS (INSTALL.md step 9)"
 	confirm "Restore writes Amazon's system and diags back."
 	put diags-kernel.img $DISK $DIAGS_KERNEL_OFFSET
 	put p2.img $DIAGS_PART 0
