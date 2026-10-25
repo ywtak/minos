@@ -1,6 +1,7 @@
 /* "All books": find every EPUB/PDF on the USB drive, cache one cover per
  * book, draw the grid. Book names are paths relative to USERSTORE_MNT. */
 #include <dirent.h>
+#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -203,7 +204,75 @@ static void frame(int x, int y, int w, int h, int t, int gray)
 	gfx_fill(x + w - t, y, t, h, gray);
 }
 
-void lib_draw(struct book *b, int n, int sel)
+/* The gas gauge's sysfs folder: the first match of BATTERY_DIR. */
+static const char *battery_dir(void)
+{
+	static char dir[256];
+	static int looked;
+	glob_t g;
+
+	if (!looked) {
+		looked = 1;
+		if (!glob(BATTERY_DIR "/battery_capacity", 0, NULL, &g)) {
+			snprintf(dir, sizeof dir, "%.*s", (int)(strrchr(g.gl_pathv[0], '/') - g.gl_pathv[0]),
+			         g.gl_pathv[0]);
+			globfree(&g);
+		}
+		logmsg("battery folder: %s", *dir ? dir : "none found");
+		if (!*dir)                             /* list what there is, to fix BATTERY_DIR */
+			system("find /sys -name '*batt*' >> " STATE_DIR "/log.txt 2>&1");
+	}
+	return *dir ? dir : NULL;
+}
+
+static int read_int(const char *file, int *v)
+{
+	char path[300];
+	FILE *f;
+	int ok;
+
+	if (!battery_dir())
+		return -1;
+	snprintf(path, sizeof path, "%s/%s", battery_dir(), file);
+	if (!(f = fopen(path, "r")))
+		return -1;
+	ok = fscanf(f, "%d", v) == 1;
+	fclose(f);
+	return ok ? 0 : -1;
+}
+
+/* Charge in %, charge left in mAh, average current in mA (< 0 discharging).
+ * Only the charge is required; a missing mAh or current reads as 0. */
+int battery_read(int *pct, int *mah, int *ma)
+{
+	if (read_int("battery_capacity", pct) || *pct < 0 || *pct > 100)
+		return -1;
+	if (read_int("battery_mAH", mah))
+		*mah = 0;
+	if (read_int("battery_current", ma))
+		*ma = 0;
+	return 0;
+}
+
+/* "78% [###  ]" at the right end of the header; framed when selected. */
+static void battery_draw(int selected)
+{
+	int pct, mah, ma, x = SCREEN_W - GRID_MARGIN - BATT_W - 4, y = HEADER_H - 14 - BATT_H, tw;
+	char s[8];
+
+	if (battery_read(&pct, &mah, &ma))
+		return;
+	snprintf(s, sizeof s, "%d%%", pct);
+	tw = gfx_text_w(s, BATT_PX);
+	gfx_text(x - tw - 8, y + BATT_H - 3, BATT_PX, 0, s);
+	frame(x, y, BATT_W, BATT_H, 2, 0);
+	gfx_fill(x + BATT_W, y + BATT_H / 3, 3, BATT_H / 3, 0);               /* nub */
+	gfx_fill(x + 4, y + 4, (BATT_W - 8) * pct / 100, BATT_H - 8, 0);
+	if (selected)
+		frame(x - tw - 16, y - 6, tw + BATT_W + 27, BATT_H + 10, CURSOR_W, 0);   /* above the rule */
+}
+
+void lib_draw(struct book *b, int n, int sel, int on_batt)
 {
 	int first = sel / PER_PAGE * PER_PAGE, i;
 	char foot[32];
@@ -211,6 +280,7 @@ void lib_draw(struct book *b, int n, int sel)
 	gfx_fill(0, 0, SCREEN_W, SCREEN_H, 255);
 	gfx_text(GRID_MARGIN, HEADER_H - HEADER_PX / 2, HEADER_PX, 0, HEADER_TEXT);
 	gfx_fill(GRID_MARGIN, HEADER_H - 10, SCREEN_W - 2 * GRID_MARGIN, 2, 0);
+	battery_draw(on_batt);
 	if (!n) {
 		gfx_text(GRID_MARGIN, HEADER_H + 2 * HEADER_PX, BAND_PX + 4, 0,
 		         "No books yet. Connect to a PC and copy");
@@ -238,7 +308,7 @@ void lib_draw(struct book *b, int n, int sel)
 		frame(x, y, w, h, 1, 0);
 		gfx_fill(x, y + h - BAND_H, w, BAND_H, 0);
 		band_title(x, y + h - BAND_H, w, b[i].title);
-		if (i == sel)
+		if (i == sel && !on_batt)
 			frame(x - SEL_BORDER - 1, y - SEL_BORDER - 1,
 			      w + 2 * SEL_BORDER + 2, h + 2 * SEL_BORDER + 2, SEL_BORDER, 0);
 	}

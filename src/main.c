@@ -200,6 +200,29 @@ static void usb_mode(void)
 	last_key = now_ms();                   /* the idle minute starts now */
 }
 
+/* The battery box: charge and how long the battery lasts at the current drain. */
+static int battery_box(void)
+{
+	int pct, mah, ma, m, key;
+	char title[32], line[48];
+	const char *items[] = { line };
+
+	if (battery_read(&pct, &mah, &ma))
+		return KNONE;
+	logmsg("battery %d%% %d mAh %d mA", pct, mah, ma);
+	snprintf(title, sizeof title, "Battery %d%%", pct);
+	if (ma > 0)
+		snprintf(line, sizeof line, "Charging");
+	else if (ma == 0)
+		snprintf(line, sizeof line, "Estimating, try later");
+	else {
+		m = mah * 60 / -ma;
+		snprintf(line, sizeof line, "About %d h %d min left", m / 60, m % 60);
+	}
+	menu_run(title, items, 1, 0, &key);
+	return key;
+}
+
 static int show_keys(void)
 {
 	char s[64];
@@ -218,7 +241,7 @@ static int show_keys(void)
 
 static int ui(int keys)
 {
-	int n, sel = 0, key, page, full = 1;
+	int n, sel = 0, key, page, full = 1, on_batt = 0, pct, mah, ma;
 
 	if (!(ctx = fz_new_context(NULL, NULL, FZ_STORE_DEFAULT)))
 		return 1;
@@ -230,6 +253,8 @@ static int ui(int keys)
 	gfx_init();
 	if (keys || access(STATE_DIR "/keys", F_OK) == 0)
 		return show_keys();
+	if (!battery_read(&pct, &mah, &ma))
+		logmsg("battery %d%% %d mAh %d mA", pct, mah, ma);
 
 	n = lib_scan(books, MAX_BOOKS);
 	for (;;) {
@@ -239,21 +264,38 @@ static int ui(int keys)
 			sel = 0;
 			full = 1;
 		}
-		lib_draw(books, n, sel);
+		lib_draw(books, n, sel, on_batt);
 		disp_flush(full);
 		full = 0;
 		while ((key = input_next(POLL_MS)) == KNONE && !usb_online())
 			;
 		page = sel / PER_PAGE;
 		switch (key) {
-		case KLEFT:  if (sel > 0) sel--; break;
-		case KRIGHT: if (sel < n - 1) sel++; break;
-		case KUP:    if (sel >= GRID_COLS) sel -= GRID_COLS; break;
-		case KDOWN:  if (sel + GRID_COLS < n) sel += GRID_COLS; break;
+		case KLEFT:  if (sel > 0 && !on_batt) sel--; break;
+		case KRIGHT: if (sel < n - 1 && !on_batt) sel++; break;
+		case KUP:                              /* top row: up to the battery */
+			if (sel % PER_PAGE >= GRID_COLS)
+				sel -= GRID_COLS;
+			else if (!battery_read(&pct, &mah, &ma))
+				on_batt = 1;
+			else if (sel >= GRID_COLS)
+				sel -= GRID_COLS;
+			break;
+		case KDOWN:
+			if (on_batt)
+				on_batt = 0;
+			else if (sel + GRID_COLS < n)
+				sel += GRID_COLS;
+			break;
 		case KNEXT:  if ((page + 1) * PER_PAGE < n) sel = (page + 1) * PER_PAGE; break;
 		case KPREV:  if (page > 0) sel = (page - 1) * PER_PAGE; break;
 		case KPOWER: power_off(); full = 1; break;
 		case KOK:
+			if (on_batt) {
+				if (battery_box() == KPOWER)
+					power_off(), full = 1;
+				break;
+			}
 			if (n && reader_run(books[sel].name) == KPOWER)
 				power_off();
 			full = 1;

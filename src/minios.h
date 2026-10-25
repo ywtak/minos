@@ -49,7 +49,8 @@ int file_put(const char *file, const char *text);   /* atomic replace */
 /* library.c */
 struct book { char name[256]; char title[160]; };
 int lib_scan(struct book *b, int max);
-void lib_draw(struct book *b, int n, int sel);
+void lib_draw(struct book *b, int n, int sel, int on_batt);
+int battery_read(int *pct, int *mah, int *ma); /* -1 if there is no gas gauge */
 
 /* reader.c */
 int reader_run(const char *name);              /* closing key; KNONE = USB plugged */

@@ -39,7 +39,16 @@
 #define MENU_PX             24
 #define MENU_BORDER         3
 
-/* screensaver */
+/* battery (built-in yoshi_battery gas gauge driver) and screensaver */
+#ifdef HOST
+#define BATTERY_DIR         "us/.battery"
+#else
+#define BATTERY_DIR         "/sys/devices/system/*/*"   /* glob; yoshi_battery/yoshi_battery0 */
+#endif
+#define BATT_W              36     /* battery icon body */
+#define BATT_H              20
+#define BATT_PX             20     /* "78%" next to it */
+#define CURSOR_W            3      /* frame around the selected battery */
 #define SAVER_IDLE_MS       60000  /* no key for this long: screensaver */
 #define SAVER_FILES         { "screensaver.png", "screensaver.jpg", "screensaver.jpeg" }   /* drive root */
 
