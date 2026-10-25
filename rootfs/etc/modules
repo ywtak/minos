@@ -1,0 +1,14 @@
+# Kernel modules loaded at boot, in order, "name args" per line (see rc.local).
+# Same order and arguments as the stock 4.1.4 /etc/init.d/video and
+# /etc/modules.yoshi. The waveform is read from eMMC by the driver ("stored").
+# g_file_storage is loaded later, only while a PC is connected (config.h).
+eink_fb_waveform
+eink_fb_hal
+mxc_epdc_fb dont_register_fb=1
+eink_fb_hal_fslepdc bootstrap=0
+eink_fb_shim
+tequila_keypad
+mxc_keyb
+fiveway
+volume
+arcotg_udc

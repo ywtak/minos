@@ -1,0 +1,10 @@
+build/
+dist/
+dl/
+tools/
+third_party/
+backup/
+us/
+minios-facts.txt
+*.img
+screen.pgm

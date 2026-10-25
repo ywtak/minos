@@ -1,0 +1,26 @@
+#!/bin/sh
+# Run by minios at boot, after /mnt/us is mounted and before the UI starts.
+
+# 1. Kernel modules, "name args" per line in /etc/modules, in order.
+#    The .ko files are Amazon's (they must match its kernel). Modules its
+#    initramfs already loaded just fail with "File exists".
+grep -v '^#' /etc/modules | while read m args; do
+	[ -n "$m" ] && insmod /lib/modules/$m.ko $args 2>/dev/null
+done
+
+# 2. The diags system is removed; this file would make the next boot jump
+#    to its empty kernel slot.
+rm -f /mnt/us/ENABLE_DIAGS
+
+# 3. Install/restore requests dropped on the USB drive (FLASHING.md).
+#    The trigger is removed first so a failure can never loop.
+F=/mnt/us/minios-flash
+MODE=
+[ -f $F/DO_INSTALL ] && rm -f $F/DO_INSTALL && MODE=install
+[ -f $F/DO_RESTORE ] && rm -f $F/DO_RESTORE && MODE=restore
+if [ -n "$MODE" ]; then
+	sync
+	YES=1 sh $F/flash.sh $MODE > $F/flash.log 2>&1
+	sync
+fi
+exit 0
