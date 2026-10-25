@@ -300,6 +300,17 @@ static int ui(int keys)
 				power_off();
 			full = 1;
 			break;
+		case KMENU: {
+			static const char *games[] = { "Sudoku", "Checkers" };
+			int g = menu_run("Games", games, 2, 0, &key);
+
+			if (g >= 0)
+				key = games_run(g == 0 ? SUDOKU : CHECKERS);
+			if (key == KPOWER)
+				power_off();
+			full = g >= 0 || key == KPOWER;    /* a closed menu only needs a redraw */
+			break;
+		}
 		}
 		if (sel / PER_PAGE != page)
 			full = 1;

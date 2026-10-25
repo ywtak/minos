@@ -30,7 +30,8 @@ TRUSTY  = tools/trusty
 KGCC    = $(TRUSTY)/usr/bin/arm-linux-gnueabi-gcc
 KBUILD  = sudo sh -c 'mkdir -p $(TRUSTY)/minos && { mountpoint -q $(TRUSTY)/minos || mount --bind $(TOP) $(TRUSTY)/minos; } && chroot $(TRUSTY) /bin/sh /minos/scripts/kbuild.sh $$0 $$1'
 CFLAGS  = -std=gnu11 -Os -Wall -Wextra -Wno-unused-parameter -Ithird_party/mupdf/include
-SRC     = src/main.c src/gfx.c src/library.c src/reader.c src/pos.c
+SRC     = src/main.c src/gfx.c src/library.c src/reader.c src/pos.c \
+          src/games.c src/sudoku.c src/checkers.c
 DEV_SRC = src/eink.c src/input.c src/usb.c
 MUPDF_FLAGS = build=release shared=no HAVE_X11=no HAVE_GLUT=no HAVE_CURL=no \
               HAVE_TESSERACT=no HAVE_LEPTONICA=no XCFLAGS="-DTOFU_CJK"
@@ -78,15 +79,17 @@ $(MUPDF_HOST): third_party/mupdf/Makefile
 	$(MAKE) -C third_party/mupdf $(MUPDF_FLAGS) OUT=$(TOP)/build/mupdf-host libs
 
 minios: build/minios
-build/minios: $(SRC) $(DEV_SRC) src/minios.h config.h $(MUPDF_ARM)
+build/minios: $(SRC) $(DEV_SRC) src/minios.h src/games.h config.h $(MUPDF_ARM)
 	$(ZIG) cc -target $(TARGET) -static $(CFLAGS) $(SRC) $(DEV_SRC) $(MUPDF_ARM) -lc++ -lm -o $@
 
 host: build/minios-host
-build/minios-host: $(SRC) src/host.c src/minios.h config.h $(MUPDF_HOST)
+build/minios-host: $(SRC) src/host.c src/minios.h src/games.h config.h $(MUPDF_HOST)
 	$(CC) -DHOST $(CFLAGS) $(SRC) src/host.c $(MUPDF_HOST) -lstdc++ -lm -o $@
 
-test: build/pos_test
-	cd build && ./pos_test
+test: build/pos_test build/games_test
+	cd build && ./pos_test && ./games_test
+build/games_test: src/sudoku.c src/checkers.c tests/games_test.c src/games.h config.h
+	mkdir -p build && $(CC) -O2 -Wall -Wextra $(filter %.c,$^) -o $@
 build/pos_test: src/pos.c tests/pos_test.c
 	mkdir -p build && $(CC) -Wall -Wextra $^ -o $@
 

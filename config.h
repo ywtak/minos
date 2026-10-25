@@ -39,6 +39,29 @@
 #define MENU_PX             24
 #define MENU_BORDER         3
 
+/* games: everything is pure black/white so fast refreshes show it exactly */
+#define GAME_TITLE_PX       22     /* "Sudoku - Medium" above the board */
+#define GAME_STATUS_PX      22     /* message line under the board */
+#define END_PX              44     /* "Solved", "You win" */
+#define CURSOR_W            3      /* cursor frame thickness */
+#define SDK_CELL            60
+#define SDK_THIN            1
+#define SDK_THICK           3
+#define SDK_PX              36     /* digit size */
+#define SDK_CLUES           { 40, 32, 26 }   /* Easy, Medium, Hard */
+#define SDK_CLUE_SLACK      2      /* accept this many clues over the target */
+#define SDK_GEN_MS          1500   /* give up improving a puzzle after this */
+#define CK_SQ               68
+#define CK_PIECE_R          26
+#define CK_OUTLINE          3      /* white piece outline */
+#define CK_KING_R           14     /* king ring: outer radius, CK_OUTLINE thick */
+#define CK_DOT_R            7      /* legal destination */
+#define CK_SEL_W            7      /* selected piece frame */
+#define CK_DEPTH            { 2, 4, 6 }      /* Easy, Normal, Hard */
+#define CK_AI_MS            1500   /* iterative deepening stops here */
+#define CK_EASY_RANDOM      20     /* % of Easy moves picked at random */
+#define CK_UNDO             128    /* positions kept for Undo */
+
 /* battery (built-in yoshi_battery gas gauge driver) and screensaver */
 #ifdef HOST
 #define BATTERY_DIR         "us/.battery"
@@ -48,7 +71,6 @@
 #define BATT_W              36     /* battery icon body */
 #define BATT_H              20
 #define BATT_PX             20     /* "78%" next to it */
-#define CURSOR_W            3      /* frame around the selected battery */
 #define SAVER_IDLE_MS       60000  /* no key for this long: screensaver */
 #define SAVER_FILES         { "screensaver.png", "screensaver.jpg", "screensaver.jpeg" }   /* drive root */
 
@@ -93,6 +115,9 @@
 #define STATE_DIR           USERSTORE_MNT "/.minios"
 #define POS_FILE            STATE_DIR "/pos"
 #define COVER_DIR           STATE_DIR "/covers"
+#define SUDOKU_SAVE         STATE_DIR "/sudoku"
+#define CHECKERS_SAVE       { STATE_DIR "/checkers-vs", STATE_DIR "/checkers-2p" }
+#define CHECKERS_MODE       STATE_DIR "/checkers-mode"
 #define MAX_BOOKS           512
 #define SCAN_DEPTH          4      /* folder levels searched for books */
 

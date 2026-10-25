@@ -46,6 +46,10 @@ int pos_get(const char *file, const char *book, int *chap, int *page);
 int pos_put(const char *file, const char *book, int chap, int page);
 int file_put(const char *file, const char *text);   /* atomic replace */
 
+/* games.c */
+enum game { SUDOKU, CHECKERS };
+int games_run(enum game g);                    /* closing key, like reader_run */
+
 /* library.c */
 struct book { char name[256]; char title[160]; };
 int lib_scan(struct book *b, int max);
