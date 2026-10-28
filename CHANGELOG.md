@@ -3,6 +3,16 @@
 Every minios version, newest first. Each one is a git tag with a matching
 [release](https://github.com/ywtak/minos/releases) and builds on the one below it.
 
+## Unreleased
+
+### Docs
+- New README:
+  - Screenshots of every screen, made with the PC build, in `docs/screenshots/`.
+  - A seven-step install overview that links into INSTALL.md.
+  - A section on other devices: what would port, and how.
+  - A risks table.
+- INSTALL.md now builds `v1.3-chess` by default, explains waking from sleep and mentions Chess, and links to the risks.
+
 ## v1.3-chess — 2026-10-28
 
 ### Added

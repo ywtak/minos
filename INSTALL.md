@@ -2,7 +2,7 @@
 
 This guide starts from a **stock Kindle that has never been jailbroken** and ends with minios running on it. It also covers updating minios and going back to Amazon's software.
 
-> **Read the whole guide once before you start.** Step 7 overwrites the Kindle's system partition. The backup in step 4 is your only way back, so do not skip it and do not lose it. minios has been tested on one unit only. Go slowly, and stop at any step that does not behave as described.
+> **Read the whole guide, and the [Risks](README.md#risks), once before you start.** Step 7 overwrites the Kindle's system partition. The backup in step 4 is your only way back, so do not skip it and do not lose it. minios has been tested on one unit only. Go slowly, and stop at any step that does not behave as described.
 
 **You need:**
 - A Kindle 5th generation (2012, non-touch, 5-way pad, no keyboard), charged above 50%
@@ -97,7 +97,7 @@ Choose your version (see the table in [README.md](README.md)):
 
 ```sh
 cd ~/minos
-git checkout v1.2-games          # or v1.1-battery, or v1.0-bare
+git checkout v1.3-chess          # or v1.2-games, v1.1-battery, v1.0-bare
 make test                        # unit tests
 make release BACKUP=~/kindle-backup/kindle-full.img
 ```
@@ -136,9 +136,9 @@ The Kindle starts into **All books**. The first start shows *Preparing covers…
 
 - **Adding books:** plug into any PC. The Kindle shows *USB connected* and appears as a drive. Copy `.epub`/`.pdf` into `books/` (subfolders are fine), eject, and unplug.
 - **Reading:** the 5-way picks a book and centre opens it. Page keys or the 5-way turn pages. Home/Back/Menu returns to the library. Your position is saved on every page.
-- **Screensaver:** after one idle minute. Put `screensaver.png` (or `.jpg`) on the drive root to use your own picture.
+- **Screensaver:** after one idle minute. Put `screensaver.png` (or `.jpg`) on the drive root to use your own picture. From v1.3 the Kindle sleeps while it shows: press **power** to wake it.
 - **Battery** (v1.1+): from the top row of books, press up to select the battery, then centre to see the time left.
-- **Games** (v1.2): press Menu in the library.
+- **Games:** press Menu in the library. Sudoku and Checkers (v1.2), Chess with an Elo setting (v1.3).
 - **Power:** the Power key switches the Kindle off. Press it again to start.
 
 minios has no USBNetwork or SSH. From now on, the drive is how you talk to it.
