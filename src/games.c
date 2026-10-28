@@ -1,4 +1,4 @@
-/* Sudoku and Checkers screens. Everything drawn here is pure black/white,
+/* Sudoku, Checkers and Chess screens. Everything drawn here is pure black/white,
  * so cursor moves and single changes use the fast 1-bit refresh of just the
  * changed squares; opening, a new game and the end use a full refresh.
  * Each screen keeps the last drawn look of every square and redraws only
@@ -581,6 +581,257 @@ static int checkers_run(void)
 	return quit;
 }
 
+/* ---- Chess ------------------------------------------------------------- */
+
+static const int ch_elo[] = CHESS_ELO;
+static struct chess cg, cundo[CHESS_UNDO];
+static int ch_level = CHESS_LEVEL, ch_color = 1, hsel = -1, hcur, nhundo, hfrom = -1, hto = -1;
+static uint8_t ch_looks[64], ch_dots[64];
+static char ch_status[64];
+
+/* screen square <-> board square: the player's side is at the bottom */
+static int view(int v) { return ch_color > 0 ? v : 63 - v; }
+
+static void ch_store(void)
+{
+	ch_save(&cg, ch_level, ch_color, buf, sizeof buf);
+	if (file_put(CHESS_SAVE, buf))
+		logmsg("chess: could not save");
+}
+
+static void ch_restart(void)
+{
+	ch_new(&cg);
+	hsel = hfrom = hto = -1;
+	nhundo = 0;
+	ch_store();
+}
+
+/* Dots on the targets of the picked-up piece. */
+static void ch_mark(void)
+{
+	struct cmove m[CH_MAXMOVES];
+	int i, n = hsel < 0 ? 0 : ch_moves(&cg, m);
+
+	memset(ch_dots, 0, sizeof ch_dots);
+	for (i = 0; i < n; i++)
+		if (m[i].from == hsel)
+			ch_dots[(int)m[i].to] = 1;
+}
+
+static int ch_look(int v)
+{
+	int s = view(v);
+
+	return (cg.b[s] + 6) | (v == hcur) << 4 | (s == hsel) << 5 | ch_dots[s] << 6 |
+	       (s == hfrom || s == hto) << 7;
+}
+
+static void ch_square(int v, int l)
+{
+	static const int solid[7] = { 0, 0x265F, 0x265E, 0x265D, 0x265C, 0x265B, 0x265A };  /* black glyphs */
+	int x = BX + v % 8 * CK_SQ, y = BY + v / 8 * CK_SQ, p = (l & 15) - 6, a = abs(p);
+	int cx = x + CK_SQ / 2, cy = y + CK_SQ / 2, e = CK_SQ / 5, i;
+	char t[2] = { "?PNBRQK"[a], 0 };
+
+	if ((v / 8 + v % 8) % 2)
+		gfx_dither(x, y, CK_SQ, CK_SQ);
+	else
+		gfx_fill(x, y, CK_SQ, CK_SQ, 255);
+	if (p && !gfx_symbol(cx, cy, CH_PX, p > 0 ? 255 : 0, solid[a])) {
+		if (p > 0)                             /* white: filled white, then the outline */
+			gfx_symbol(cx, cy, CH_PX, 0, solid[a] - 6);
+	} else if (p) {                            /* no symbol font: a lettered disc */
+		gfx_disc(cx, cy, CK_PIECE_R, 0);
+		if (p > 0)
+			gfx_disc(cx, cy, CK_PIECE_R - CK_OUTLINE, 255);
+		gfx_text_bold(cx - gfx_text_w(t, SDK_PX) / 2, cy + SDK_PX * 36 / 100, SDK_PX, p > 0 ? 0 : 255, t);
+	}
+	if (l & 0x80)                              /* last move: corner ticks */
+		for (i = 0; i < 4; i++) {
+			gfx_fill(i & 1 ? x + CK_SQ - e : x, i & 2 ? y + CK_SQ - CURSOR_W : y, e, CURSOR_W, 0);
+			gfx_fill(i & 1 ? x + CK_SQ - CURSOR_W : x, i & 2 ? y + CK_SQ - e : y, CURSOR_W, e, 0);
+		}
+	if (l & 0x40) {                            /* legal target, visible over a piece too */
+		gfx_disc(cx, cy, CK_DOT_R + 3, 255);
+		gfx_disc(cx, cy, CK_DOT_R, 0);
+	}
+	if (l & 0x20)
+		gfx_frame(x, y, CK_SQ, CK_SQ, CK_SEL_W, 0);
+	if (l & 0x10)
+		gfx_frame(x, y, CK_SQ, CK_SQ, CURSOR_W, 0);
+}
+
+static void ch_draw(void)
+{
+	char t[64];
+	int v;
+
+	gfx_fill(0, 0, SCREEN_W, SCREEN_H, 255);
+	snprintf(t, sizeof t, "Chess - you play %s, Kindle %d Elo", ch_color > 0 ? "White" : "Black",
+	         ch_elo[ch_level]);
+	line(BY - CK_SQ / 2, t, 0);
+	gfx_frame(BX - 2, BY - 2, 8 * CK_SQ + 4, 8 * CK_SQ + 4, 2, 0);
+	ch_mark();
+	for (v = 0; v < 64; v++)
+		ch_square(v, ch_looks[v] = ch_look(v));
+	line(STATUS_Y, ch_status, 0);
+}
+
+static void ch_refresh(const char *status)
+{
+	int v, l, box[4] = { SCREEN_W, SCREEN_H, 0, 0 };
+
+	ch_mark();
+	for (v = 0; v < 64; v++)
+		if ((l = ch_look(v)) != ch_looks[v]) {
+			ch_square(v, ch_looks[v] = l);
+			grow(box, BX + v % 8 * CK_SQ, BY + v / 8 * CK_SQ, CK_SQ);
+		}
+	flush_box(box);
+	if (strcmp(status, ch_status)) {
+		snprintf(ch_status, sizeof ch_status, "%s", status);
+		line(STATUS_Y, ch_status, 1);
+	}
+}
+
+static void ch_menu(void)
+{
+	enum { NLEVELS = sizeof ch_elo / sizeof *ch_elo };
+	char items[5][32], names[NLEVELS][16];
+	const char *menu[5] = { items[0], items[1], items[2], items[3], items[4] }, *elos[NLEVELS];
+	int i, r, full = 0;
+
+	strcpy(items[0], "New game");
+	snprintf(items[1], 32, "Strength: %d Elo", ch_elo[ch_level]);
+	snprintf(items[2], 32, "Play as: %s", ch_color > 0 ? "White" : "Black");
+	strcpy(items[3], "Undo last move");
+	strcpy(items[4], "Quit");
+	switch (game_menu("Chess", menu, 5, 0)) {
+	case 0:
+		ch_restart();
+		full = 1;
+		break;
+	case 1:
+		for (i = 0; i < NLEVELS; i++)
+			snprintf(names[i], sizeof names[i], "%d Elo", ch_elo[i]), elos[i] = names[i];
+		if ((r = game_menu("Strength", elos, NLEVELS, ch_level)) >= 0) {
+			ch_level = r;
+			ch_store();
+		}
+		break;
+	case 2:                                    /* swap sides; the Kindle may move now */
+		ch_color = -ch_color;
+		hsel = -1;
+		hcur = 63 - hcur;
+		nhundo = 0;
+		ch_store();
+		full = 1;
+		break;
+	case 3:
+		if (nhundo) {
+			cg = cundo[--nhundo];
+			hsel = hfrom = hto = -1;
+			ch_store();
+		}
+		break;
+	case 4:
+		quit = KHOME;
+		break;
+	}
+	if (quit < 0) {                            /* repaint what the menu covered */
+		ch_draw();
+		if (full)
+			disp_flush(1);
+		else
+			disp_area(0, 0, SCREEN_W, SCREEN_H);
+	}
+}
+
+static int chess_run(void)
+{
+	static const int depth[] = CHESS_DEPTH, rnd[] = CHESS_RANDOM, noise[] = CHESS_NOISE;
+	struct cmove mv[CH_MAXMOVES], m;
+	const char *title, *sub;
+	char t[64];
+	int k, i, n, r, s, reached;
+	long t0;
+
+	if (load_file(CHESS_SAVE) || ch_load(&cg, &ch_level, &ch_color, buf))
+		ch_new(&cg);                           /* no save, or a damaged one */
+	hsel = hfrom = hto = -1;
+	nhundo = 0;
+	hcur = 52;                                 /* among the player's pawns */
+	ch_status[0] = 0;
+	ch_draw();
+	disp_flush(1);
+	while (quit < 0) {
+		if ((r = ch_result(&cg)) != CH_PLAYING) {
+			title = r != CH_MATE ? "Draw" : cg.turn == ch_color ? "Kindle wins" : "You win";
+			sub = r == CH_MATE ? "Checkmate" : r == CH_STALEMATE ? "Stalemate" : NULL;
+			snprintf(t, sizeof t, "%s - %s", sub ? sub : "Draw", title);
+			hsel = -1;
+			ch_refresh(t);                     /* look at the final position first */
+			game_key();
+			ch_restart();                      /* leaving now opens a new game */
+			if (quit >= 0 || !end_screen(title, sub))
+				break;
+			ch_draw();
+			disp_flush(1);
+			continue;
+		}
+		if (cg.turn != ch_color) {             /* the Kindle's move */
+			hsel = -1;
+			ch_refresh("Kindle is thinking...");
+			t0 = mono_ms();
+			m = ch_ai(&cg, depth[ch_level], rnd[ch_level], noise[ch_level], CHESS_AI_MS, &reached);
+			logmsg("chess %d Elo: depth %d in %ld ms", ch_elo[ch_level], reached, mono_ms() - t0);
+			ch_play(&cg, m);
+			hfrom = m.from, hto = m.to;
+			ch_store();
+			continue;
+		}
+		n = ch_moves(&cg, mv);
+		ch_refresh(ch_in_check(&cg) ? "Check - your move" : "Your move");
+		k = game_key();
+		switch (k) {
+		case KUP:    if (hcur >= 8) hcur -= 8; break;
+		case KDOWN:  if (hcur < 56) hcur += 8; break;
+		case KLEFT:  if (hcur % 8) hcur--; break;
+		case KRIGHT: if (hcur % 8 < 7) hcur++; break;
+		case KMENU:  ch_menu(); break;
+		case KBACK:
+			if (hsel >= 0)
+				hsel = -1;
+			else
+				quit = KHOME;
+			break;
+		case KOK:
+			s = view(hcur);
+			/* ponytail: the queen promotion is listed first, so pawns always
+			 * become queens; add a picker if underpromotion matters */
+			for (i = 0; i < n && !(mv[i].from == hsel && mv[i].to == s); i++)
+				;
+			if (hsel >= 0 && i < n) {          /* a dot: move there */
+				if (nhundo == CHESS_UNDO)
+					memmove(cundo, cundo + 1, sizeof cundo - sizeof *cundo), nhundo--;
+				cundo[nhundo++] = cg;
+				ch_play(&cg, mv[i]);
+				hfrom = mv[i].from, hto = mv[i].to;
+				hsel = -1;
+				ch_store();
+				break;
+			}
+			for (i = 0; i < n && mv[i].from != s; i++)
+				;
+			hsel = i < n ? s : -1;             /* pick up a piece that can move */
+			break;
+		}
+	}
+	ch_store();
+	return quit;
+}
+
 int games_run(enum game g)
 {
 	static int seeded;
@@ -597,5 +848,5 @@ int games_run(enum game g)
 		seeded = 1;
 	}
 	quit = -1;
-	return g == SUDOKU ? sudoku_run() : checkers_run();
+	return g == SUDOKU ? sudoku_run() : g == CHECKERS ? checkers_run() : chess_run();
 }

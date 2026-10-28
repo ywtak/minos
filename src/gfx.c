@@ -3,12 +3,19 @@
 #include <string.h>
 #include "minios.h"
 
-static fz_font *font, *bold;
+static fz_font *font, *bold, *sym;
 
 void gfx_init(void)
 {
+	const unsigned char *data;
+	int len;
+
 	font = fz_new_base14_font(ctx, FONT_NAME);
 	bold = fz_new_base14_font(ctx, FONT_NAME "-Bold");
+	if ((data = fz_lookup_noto_symbol2_font(ctx, &len)))   /* chess pieces */
+		sym = fz_new_font_from_memory(ctx, "NotoSansSymbols2", data, len, 0, 0);
+	else
+		logmsg("no symbol font: chess pieces are letters");
 }
 
 void gfx_fill(int x, int y, int w, int h, int gray)
@@ -60,6 +67,20 @@ void gfx_text(int x, int baseline, int px, int gray, const char *s)
 void gfx_text_bold(int x, int baseline, int px, int gray, const char *s)
 {
 	draw_text(bold, x, baseline, px, gray, s);
+}
+
+/* One symbol-font glyph centred on (cx, cy); -1 if there is no symbol font. */
+int gfx_symbol(int cx, int cy, int px, int gray, int rune)
+{
+	char s[8];
+	fz_rect r;
+
+	if (!sym)
+		return -1;
+	r = fz_bound_glyph(ctx, sym, fz_encode_character(ctx, sym, rune), fz_make_matrix(px, 0, 0, -px, 0, 0));
+	s[fz_runetochar(s, rune)] = 0;
+	draw_text(sym, cx - (int)((r.x0 + r.x1) / 2), cy - (int)((r.y0 + r.y1) / 2), px, gray, s);
+	return 0;
 }
 
 /* Draw s, cutting it down to "..." if wider than maxw. */

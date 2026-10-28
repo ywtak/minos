@@ -36,6 +36,7 @@ void gfx_text_bold(int x, int baseline, int px, int gray, const char *s);
 void gfx_frame(int x, int y, int w, int h, int t, int gray);
 void gfx_disc(int cx, int cy, int r, int gray);
 void gfx_dither(int x, int y, int w, int h);  /* light gray from black/white pixels */
+int gfx_symbol(int cx, int cy, int px, int gray, int rune);   /* -1: no symbol font */
 int key_wait(void);                            /* next key; KNONE = USB cable plugged in */
 /* Boxed list over the current screen. Returns the chosen entry, or -1 with
  * *key = KBACK/KMENU (closed), KHOME, KPOWER or KNONE (USB). */
@@ -47,7 +48,7 @@ int pos_put(const char *file, const char *book, int chap, int page);
 int file_put(const char *file, const char *text);   /* atomic replace */
 
 /* games.c */
-enum game { SUDOKU, CHECKERS };
+enum game { SUDOKU, CHECKERS, CHESS };
 int games_run(enum game g);                    /* closing key, like reader_run */
 
 /* library.c */

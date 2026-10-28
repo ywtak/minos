@@ -2,6 +2,8 @@
  * child process and respawns it if it ever dies.
  *   minios        normal start
  *   minios keys   print raw key codes (also when .minios/keys exists) */
+#include <errno.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,14 +93,35 @@ static int saver_image(const char *name)
 	return ok;
 }
 
+/* Suspend to RAM like the stock screensaver; the write returns after the
+ * wake-up (power key). -1 if the kernel refused. */
+static int sleep_now(void)
+{
+	int fd, ok;
+
+	sync();
+	if ((fd = open(SUSPEND_PATH, O_WRONLY)) < 0) {
+		logmsg("suspend: %s: %s", SUSPEND_PATH, strerror(errno));
+		return -1;
+	}
+	ok = write(fd, "mem", 3) == 3;
+	if (!ok)
+		logmsg("suspend: %s", strerror(errno));
+	close(fd);
+	if (ok)
+		logmsg("suspend: resumed");
+	return ok ? 0 : -1;
+}
+
 /* Show the screensaver until a key (swallowed) or the USB cable, then put
- * back exactly what was on screen. */
+ * back exactly what was on screen. The device sleeps meanwhile; if it
+ * cannot, we poll as before. */
 static void screensaver(void)
 {
 	static uint8_t saved[SCREEN_W * SCREEN_H];
 	static const char *files[] = SAVER_FILES;
 	long t0 = now_ms();
-	int i, shown = 0, c;
+	int i, shown = 0, c = 0;
 
 	memcpy(saved, screen, sizeof saved);
 	gfx_fill(0, 0, SCREEN_W, SCREEN_H, 255);
@@ -106,12 +129,18 @@ static void screensaver(void)
 		shown = saver_image(files[i]);
 	if (!shown) {
 		gfx_text_bold((SCREEN_W - gfx_text_w("minios", 72)) / 2, SCREEN_H / 2, 72, 0, "minios");
-		gfx_text((SCREEN_W - gfx_text_w("Press any key", 22)) / 2, SCREEN_H / 2 + 60, 22, 0,
-		         "Press any key");
+		gfx_text((SCREEN_W - gfx_text_w("Press power to wake", 22)) / 2, SCREEN_H / 2 + 60, 22, 0,
+		         "Press power to wake");
 	}
 	disp_flush(1);
-	while ((c = input_raw(POLL_MS)) < 0 && !usb_online())
-		;
+	if (!sleep_now())
+		while (input_raw(300) >= 0)        /* swallow the key that woke us */
+			;
+	else
+		while ((c = input_raw(POLL_MS)) < 0 && !usb_online())
+			;
+	if (usb_online())
+		c = -1;
 	memcpy(screen, saved, sizeof saved);
 	if (c >= 0)
 		disp_flush(1);                     /* USB: its own screen comes next */
@@ -301,11 +330,11 @@ static int ui(int keys)
 			full = 1;
 			break;
 		case KMENU: {
-			static const char *games[] = { "Sudoku", "Checkers" };
-			int g = menu_run("Games", games, 2, 0, &key);
+			static const char *games[] = { "Sudoku", "Checkers", "Chess" };   /* enum game order */
+			int g = menu_run("Games", games, 3, 0, &key);
 
 			if (g >= 0)
-				key = games_run(g == 0 ? SUDOKU : CHECKERS);
+				key = games_run(g);
 			if (key == KPOWER)
 				power_off();
 			full = g >= 0 || key == KPOWER;    /* a closed menu only needs a redraw */

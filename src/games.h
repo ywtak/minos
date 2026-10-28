@@ -39,4 +39,28 @@ struct step ck_ai(const struct ck *g, int depth, int random_pct, long ms, int *r
 void ck_save(const struct ck *g, int level, char *buf, int n);
 int ck_load(struct ck *g, int *level, const char *text);  /* 0 = ok */
 
+/* chess.c: white at the bottom moves first; squares 0 = a8 .. 63 = h1 */
+#define CH_MAXMOVES 256
+#define CH_FEN_MAX  96
+enum { CH_PAWN = 1, CH_KNIGHT, CH_BISHOP, CH_ROOK, CH_QUEEN, CH_KING };
+enum { CH_PLAYING, CH_MATE, CH_STALEMATE, CH_DRAW };   /* MATE: the side to move lost */
+struct chess {
+	int8_t b[64];                              /* +white / -black CH_PAWN..CH_KING, 0 empty */
+	int turn;                                  /* +1 white, -1 black */
+	int castle;                                /* rights K Q k q = 1 2 4 8 */
+	int ep;                                    /* en passant target square, or -1 */
+	int half, full;                            /* 50-move clock, move number */
+};
+struct cmove { int8_t from, to, promo; };       /* promo = CH_KNIGHT..CH_QUEEN, or 0 */
+void ch_new(struct chess *g);
+int ch_moves(const struct chess *g, struct cmove *out);   /* legal moves */
+void ch_play(struct chess *g, struct cmove m);
+int ch_in_check(const struct chess *g);
+int ch_result(const struct chess *g);
+struct cmove ch_ai(const struct chess *g, int depth, int random_pct, int noise, long ms, int *reached);
+void ch_fen(const struct chess *g, char *out);  /* out: CH_FEN_MAX bytes */
+int ch_set_fen(struct chess *g, const char *fen);         /* 0 = ok */
+void ch_save(const struct chess *g, int level, int color, char *buf, int n);
+int ch_load(struct chess *g, int *level, int *color, const char *text);   /* 0 = ok */
+
 #endif

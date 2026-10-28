@@ -56,6 +56,8 @@ Confirm with `./minios keys` over SSH on stock firmware (or create `.minios/keys
 | `/proc/sysrq-trigger` | absent on stock 4.1.4 (no MAGIC_SYSRQ); flash.sh skips the freeze because `/` is mounted ro; our kernel enables it | DOC (defconfig) |
 | Charging gate | `arcotg_udc` only charges if the battery id is in `tequila_valid_ids` {12, 76, 140, 204} | DOC (`battery_id.h`): check `battery` section |
 | Driver modules (all `=m`, must be loaded by `/etc/modules`) | e-ink: `eink_fb_waveform eink_fb_hal eink_fb_shim eink_fb_hal_fslepdc mxc_epdc_fb`; keys: `mxc_keyb tequila_keypad fiveway`; USB: `arcotg_udc g_file_storage` | DOC (our build): order from `modules` section |
+| Suspend to RAM | screensaver writes `mem` to `/sys/power/state` (`SUSPEND_PATH`); power key wakes; log shows `suspend: resumed` or the error | DOC (stock powerd does the same): TBD |
+| CPU idle clocking | rc.local sets cpufreq `ondemand` and `mxc_dvfs_core.0/enable` if present | DOC: TBD |
 | User storage size | 1.45 GB FAT32, label `Kindle` | VERIFIED (Windows) |
 | USBNetwork hack addresses | Kindle 192.168.15.244, PC 192.168.15.201 | DOC (hack default; check its config) |
 

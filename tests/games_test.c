@@ -1,4 +1,4 @@
-/* make test: Sudoku generator/saves and Checkers rules/AI/saves. */
+/* make test: Sudoku generator/saves, Checkers and Chess rules/AI/saves. */
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -139,11 +139,96 @@ static void checkers(void)
 	assert(ck_load(&t, &lv, buf));
 }
 
+static long perft(const struct chess *g, int depth)
+{
+	struct cmove m[CH_MAXMOVES];
+	struct chess t;
+	int n = ch_moves(g, m), i;
+	long sum = 0;
+
+	if (depth == 1)
+		return n;
+	for (i = 0; i < n; i++) {
+		t = *g;
+		ch_play(&t, m[i]);
+		sum += perft(&t, depth - 1);
+	}
+	return sum;
+}
+
+static void chess(void)
+{
+	struct chess g, t;
+	struct cmove m[CH_MAXMOVES], a;
+	char buf[256], fen[CH_FEN_MAX];
+	int n, i, games, ply, lv, col, reached, r;
+	long t0, worst = 0;
+
+	/* perft: well-known node counts cover castling, en passant, promotion */
+	ch_new(&g);
+	assert(perft(&g, 3) == 8902 && perft(&g, 4) == 197281);
+	assert(!ch_set_fen(&g, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"));
+	assert(perft(&g, 1) == 48 && perft(&g, 2) == 2039 && perft(&g, 3) == 97862);
+	assert(!ch_set_fen(&g, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"));
+	assert(perft(&g, 4) == 43238);
+	assert(!ch_set_fen(&g, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"));
+	assert(perft(&g, 3) == 9467);
+
+	/* results */
+	assert(!ch_set_fen(&g, "R5k1/5ppp/8/8/8/8/8/6K1 b - - 1 1") && ch_result(&g) == CH_MATE);
+	assert(!ch_set_fen(&g, "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1") && ch_result(&g) == CH_STALEMATE);
+	assert(!ch_set_fen(&g, "7k/8/6K1/8/8/8/8/5B2 b - - 0 1") && ch_result(&g) == CH_DRAW);
+
+	/* mate in one is found */
+	assert(!ch_set_fen(&g, "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"));
+	a = ch_ai(&g, 3, 0, 0, 3000, &reached);
+	assert(a.from == 56 && a.to == 0);
+
+	/* the AI always plays a legal move; whole games end; time limit holds */
+	for (games = 0; games < 3; games++) {
+		ch_new(&g);
+		for (ply = 0; ply < 150 && ch_result(&g) == CH_PLAYING; ply++) {
+			n = ch_moves(&g, m);
+			t0 = mono_ms();
+			a = ch_ai(&g, games ? 64 : 1, games ? 0 : 40, games == 2 ? 0 : 300, 100, &reached);
+			if (mono_ms() - t0 > worst)
+				worst = mono_ms() - t0;
+			for (i = 0; i < n && memcmp(&m[i], &a, sizeof a); i++)
+				;
+			assert(i < n);
+			ch_play(&g, a);
+		}
+		r = ch_result(&g);
+		printf("chess AI game %d: %d plies, %s\n", games, ply,
+		       r == CH_MATE ? (g.turn > 0 ? "black won" : "white won") :
+		       r == CH_PLAYING ? "unfinished" : "draw");
+	}
+	printf("chess AI: worst %ld ms (limit 100)\n", worst);
+
+	/* saves: round trip, and damage is refused */
+	ch_new(&g);
+	n = ch_moves(&g, m);
+	ch_play(&g, m[n - 1]);
+	ch_save(&g, 4, -1, buf, sizeof buf);
+	assert(!ch_load(&t, &lv, &col, buf) && lv == 4 && col == -1 && !memcmp(&g, &t, sizeof g));
+	ch_fen(&t, fen);
+	assert(strstr(buf, fen));
+	assert(ch_load(&t, &lv, &col, "") && ch_load(&t, &lv, &col, "minios-chess 1\n"));
+	strstr(buf, "level ")[6] = '9';
+	assert(ch_load(&t, &lv, &col, buf));
+	assert(ch_set_fen(&t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN w KQkq - 0 1"));  /* short rank */
+	assert(ch_set_fen(&t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQ1BNR w kq - 0 1"));   /* no white king */
+	assert(ch_set_fen(&t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e3 0 1")); /* bad e.p. */
+	assert(ch_set_fen(&t, "4k3/8/8/8/8/8/8/4K2R w KQ - 0 1"));                        /* no a1 rook */
+	assert(ch_set_fen(&t, "4k3/4Q3/8/8/8/8/8/4K3 w - - 0 1"));                        /* side not to move in check */
+}
+
 int main(void)
 {
 	rng_seed(12345);
 	sudoku();
 	checkers();
+	chess();
 	puts("games_test: ok");
 	return 0;
 }

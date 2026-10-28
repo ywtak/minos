@@ -14,8 +14,9 @@ The repository is built in layers. Each layer is a git tag with a matching [rele
 | [`v1.0-bare`](https://github.com/ywtak/minos/tree/v1.0-bare) | **Base.** Library grid with covers, EPUB/PDF reader (positions saved on every page), USB drive mode for copying books, a screensaver after one idle minute (`screensaver.png`/`.jpg` on the drive root), and power off. |
 | [`v1.1-battery`](https://github.com/ywtak/minos/tree/v1.1-battery) | Bare + **battery update.** Battery icon and percentage in the header. Press up from the top row to select it, then centre to see the time left at the current drain. |
 | [`v1.2-games`](https://github.com/ywtak/minos/tree/v1.2-games) | Battery + **games update.** Press Menu on the library to open Sudoku (Easy/Medium/Hard) or Checkers (vs the Kindle at three levels, or two players). Games are saved on the drive. |
+| [`v1.3-chess`](https://github.com/ywtak/minos/tree/v1.3-chess) | Games + **chess and sleep update.** Chess against the Kindle, its strength picked by Elo (400-2000, approximate). The screensaver now suspends the Kindle like the stock one (press power to wake), instead of keeping the CPU awake (not yet measured on hardware). |
 
-`main` is always the latest full version. To build a specific one, run `git checkout v1.0-bare` (or `v1.1-battery`) before `make release`. You can also download that tag's source zip from its release page.
+`main` is always the latest full version. To build a specific one, run `git checkout v1.0-bare` (or another tag) before `make release`. You can also download that tag's source zip from its release page.
 
 To fork minios, start from `v1.0-bare`: it's the smallest version that still works.
 
@@ -32,7 +33,7 @@ The releases contain no prebuilt images. A minios system image includes Amazon's
 | Library | 5-way | move the selection |
 | | page keys | previous/next page of books |
 | | centre | open the book (or the battery box, if selected) |
-| | Menu | Games (v1.2) |
+| | Menu | Games: Sudoku, Checkers (v1.2), Chess (v1.3) |
 | | Power | power off; press again to start |
 | Book | page keys / 5-way | turn pages |
 | | Home / Back / Menu | back to the library |
@@ -41,12 +42,13 @@ The releases contain no prebuilt images. A minios system image includes Amazon's
 
 | Path | What |
 |---|---|
-| `src/` | minios itself (`main.c` = init + UI loop, `library.c`, `reader.c`, `gfx.c`, games in `games.c`/`sudoku.c`/`checkers.c`). `host.c` is a PC backend for testing without a Kindle. |
+| `src/` | minios itself (`main.c` = init + UI loop, `library.c`, `reader.c`, `gfx.c`, games in `games.c`/`sudoku.c`/`checkers.c`/`chess.c`). `host.c` is a PC backend for testing without a Kindle. |
 | `config.h` | every layout value, timing and device number |
 | `rootfs/` | `/etc` of the minios system (module list, `rc.local`, mdev) |
 | `scripts/` | `flash.sh` (runs on the Kindle: install/restore), `discover.sh` (read-only device survey), `layout.env` (eMMC offsets), rootfs and kernel build helpers |
 | `kernel/` | headers missing from Amazon's 4.1.4 GPL tarball, for the optional `make kernel` |
 | `NOTES.md` | every hardware fact minios relies on, and how sure we are of it |
+| `CHANGELOG.md` | what changed in each version |
 
 ## Status and warning
 

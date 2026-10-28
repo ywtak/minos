@@ -61,6 +61,16 @@
 #define CK_AI_MS            1500   /* iterative deepening stops here */
 #define CK_EASY_RANDOM      20     /* % of Easy moves picked at random */
 #define CK_UNDO             128    /* positions kept for Undo */
+/* chess strength per Elo entry. The Elo numbers are rough guesses: tune
+ * depth/random/noise after playing on the device. */
+#define CHESS_ELO           { 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000 }
+#define CHESS_DEPTH         {   1,   1,   2,    2,    3,    3,    4,    5,   64 }
+#define CHESS_RANDOM        {  40,  20,  10,    5,    0,    0,    0,    0,    0 }  /* % random moves */
+#define CHESS_NOISE         { 300, 200, 150,  100,   60,   30,   10,    0,    0 }  /* root score noise, cp */
+#define CHESS_LEVEL         4      /* default: 1200 */
+#define CHESS_AI_MS         3000   /* iterative deepening stops here */
+#define CHESS_UNDO          128
+#define CH_PX               60     /* piece glyph size (board squares are CK_SQ) */
 
 /* battery (built-in yoshi_battery gas gauge driver) and screensaver */
 #ifdef HOST
@@ -71,7 +81,12 @@
 #define BATT_W              36     /* battery icon body */
 #define BATT_H              20
 #define BATT_PX             20     /* "78%" next to it */
-#define SAVER_IDLE_MS       60000  /* no key for this long: screensaver */
+#define SAVER_IDLE_MS       60000  /* no key for this long: screensaver (and suspend) */
+#ifdef HOST
+#define SUSPEND_PATH        "us/.suspend"      /* absent: the PC never suspends */
+#else
+#define SUSPEND_PATH        "/sys/power/state" /* VERIFY: "mem" sleeps until the power key */
+#endif
 #define SAVER_FILES         { "screensaver.png", "screensaver.jpg", "screensaver.jpeg" }   /* drive root */
 
 /* timing */
@@ -118,6 +133,7 @@
 #define SUDOKU_SAVE         STATE_DIR "/sudoku"
 #define CHECKERS_SAVE       { STATE_DIR "/checkers-vs", STATE_DIR "/checkers-2p" }
 #define CHECKERS_MODE       STATE_DIR "/checkers-mode"
+#define CHESS_SAVE          STATE_DIR "/chess"
 #define MAX_BOOKS           512
 #define SCAN_DEPTH          4      /* folder levels searched for books */
 

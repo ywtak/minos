@@ -8,6 +8,11 @@ grep -v '^#' /etc/modules | while read m args; do
 	[ -n "$m" ] && insmod /lib/modules/$m.ko $args 2>/dev/null
 done
 
+# 1b. No powerd here: let the CPU clock down when idle. Either file may be
+#     missing on this kernel (NOTES.md).
+echo ondemand > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null
+echo 1 > /sys/devices/platform/mxc_dvfs_core.0/enable 2>/dev/null
+
 # 2. The diags system is removed; this file would make the next boot jump
 #    to its empty kernel slot.
 rm -f /mnt/us/ENABLE_DIAGS
